@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>JWT Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.26/jsrsasign-all-min.js"></script>
+  <style>
+    :root {
+      --primary-color: #3b82f6;
+      --background-color: #f9fafb;
+      --text-color: #111827;
+      --input-bg: #ffffff;
+      --input-border: #d1d5db;
+      --section-bg: #ffffff;
+      --section-shadow: rgba(0, 0, 0, 0.05);
+      --hover-bg: #eff6ff;
+    }
+
+    [data-theme="dark"] {
+      --primary-color: #60a5fa;
+      --background-color: #1f2937;
+      --text-color: #f9fafb;
+      --input-bg: #374151;
+      --input-border: #4b5563;
+      --section-bg: #111827;
+      --section-shadow: rgba(255, 255, 255, 0.05);
+      --hover-bg: #334155;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--background-color);
+      color: var(--text-color);
+      padding: 2em;
+      max-width: 900px;
+      margin: auto;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    h2 {
+      color: var(--primary-color);
+      margin-bottom: 0.5em;
+    }
+
+    .toggle-theme {
+      float: right;
+      background: transparent;
+      border: 1px solid var(--input-border);
+      color: var(--text-color);
+      padding: 0.5em 1em;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 1em;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .toggle-theme:hover {
+      background-color: var(--hover-bg);
+    }
+
+    textarea, input, select {
+      width: 100%;
+      padding: 0.75em;
+      margin-top: 0.5em;
+      border-radius: 8px;
+      border: 1px solid var(--input-border);
+      background-color: var(--input-bg);
+      font-family: monospace;
+      box-sizing: border-box;
+      color: var(--text-color);
+      transition: background-color 0.3s, border 0.3s;
+    }
+
+    textarea:focus, input:focus, select:focus {
+      border-color: var(--primary-color);
+      outline: none;
+      background-color: var(--hover-bg);
+    }
+
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.6em 1.2em;
+      margin-top: 1em;
+      margin-right: 0.5em;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+      transform: scale(1.05);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .section {
+      background: var(--section-bg);
+      padding: 1.5em;
+      margin-top: 2em;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px var(--section-shadow);
+      transition: box-shadow 0.3s;
+    }
+
+    .section:hover {
+      box-shadow: 0 4px 12px var(--section-shadow);
+    }
+
+    pre {
+      background: var(--input-bg);
+      padding: 1em;
+      overflow: auto;
+      border-radius: 8px;
+      transition: background-color 0.3s;
+    }
+
+    #verifyResult {
+      margin-top: 1em;
+      font-weight: bold;
+    }
+
+    .warning {
+      color: orange;
+      margin-top: 0.5em;
+    }
+
+    .error {
+      color: red;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .note {
+      color: red;
+      font-size: 0.9em;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <button class="toggle-theme" onclick="toggleTheme()">🌓 Toggle Dark Mode</button>
+  <h2>JWT Editor</h2>
+  <p class="note">⚠️ This tool is for testing purposes only. Do not paste production secrets here.</p>
+
+  <div class="section">
+    <label for="jwtInput">Paste JWT:</label>
+    <textarea id="jwtInput" rows="4" placeholder="eyJhbGciOi..."></textarea>
+    <label for="algSelect">Algorithm:</label>
+    <select id="algSelect">
+      <option value="HS256">HS256 (HMAC)</option>
+      <option value="RS256">RS256 (RSA)</option>
+    </select>
+    <button onclick="decodeJWT()">Decode</button>
+    <div id="expirationWarning" class="warning"></div>
+  </div>
+
+  <div class="section">
+    <label>Header:</label>
+    <pre id="headerOutput"></pre>
+
+    <label>Payload:</label>
+    <pre id="payloadOutput"></pre>
+  </div>
+
+  <div class="section">
+    <label for="secretInputVerify">Verify Signature (Secret or Public Key):</label>
+    <input type="text" id="secretInputVerify" placeholder="Enter key for verification">
+    <button onclick="verifySignature()">Verify</button>
+    <div id="verifyResult"></div>
+  </div>
+
+  <div class="section">
+    <label for="editHeader">Edit Header (JSON):</label>
+    <textarea id="editHeader" rows="4" placeholder='{ "alg": "HS256", "typ": "JWT" }'></textarea>
+
+    <label for="editPayload">Edit Payload (JSON):</label>
+    <textarea id="editPayload" rows="4" placeholder='{ "sub": "user123" }'></textarea>
+
+    <label for="secretInputReencode">Key for Re-encoding (Secret or Private Key):</label>
+    <input type="text" id="secretInputReencode" placeholder="Enter key for re-encoding">
+
+    <button onclick="createJWT()">Re-encode JWT</button>
+    <button onclick="copyJWT()">Copy JWT</button>
+    <pre id="newJWTOutput"></pre>
+  </div>
+
+  <script>
+    function decodeJWT() {
+      const jwt = document.getElementById('jwtInput').value.trim();
+      const parts = jwt.split('.');
+      const expirationDiv = document.getElementById('expirationWarning');
+      expirationDiv.textContent = '';
+
+      if (parts.length !== 3) {
+        alert('JWT must have three parts separated by dots.');
+        return;
+      }
+
+      try {
+        const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+
+        document.getElementById('headerOutput').textContent = JSON.stringify(header, null, 2);
+        document.getElementById('payloadOutput').textContent = JSON.stringify(payload, null, 2);
+
+        document.getElementById('editHeader').value = JSON.stringify(header, null, 2);
+        document.getElementById('editPayload').value = JSON.stringify(payload, null, 2);
+
+        if (payload.exp) {
+          const now = Math.floor(Date.now() / 1000);
+          const expDate = new Date(payload.exp * 1000).toLocaleString();
+          if (payload.exp < now) {
+            expirationDiv.textContent = `⚠️ Token has expired (Expired at ${expDate})`;
+          } else {
+            expirationDiv.textContent = `✅ Token valid until ${expDate}`;
+          }
+        }
+      } catch (err) {
+        alert('Invalid JWT format');
+      }
+    }
+
+    function verifySignature() {
+      const jwt = document.getElementById('jwtInput').value.trim();
+      const key = document.getElementById('secretInputVerify').value.trim();
+      const alg = document.getElementById('algSelect').value;
+      const resultDiv = document.getElementById('verifyResult');
+
+      try {
+        const isValid = KJUR.jws.JWS.verifyJWT(jwt, key, { alg: [alg] });
+        resultDiv.textContent = isValid ? '✅ Signature is valid' : '❌ Signature is invalid';
+        resultDiv.className = isValid ? 'success' : 'error';
+      } catch (err) {
+        resultDiv.textContent = `❌ Verification error: ${err.message}`;
+        resultDiv.className = 'error';
+      }
+    }
+
+    function isValidJSON(str) {
+      try {
+        JSON.parse(str);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function createJWT() {
+      const headerText = document.getElementById('editHeader').value;
+      const payloadText = document.getElementById('editPayload').value;
+      const key = document.getElementById('secretInputReencode').value.trim();
+      const alg = document.getElementById('algSelect').value;
+
+      if (!isValidJSON(headerText) || !isValidJSON(payloadText)) {
+        alert('Invalid JSON in header or payload');
+        return;
+      }
+
+      try {
+        const sHeader = JSON.stringify(JSON.parse(headerText));
+        const sPayload = JSON.stringify(JSON.parse(payloadText));
+        const jwt = KJUR.jws.JWS.sign(alg, sHeader, sPayload, key);
+        document.getElementById('newJWTOutput').textContent = jwt;
+      } catch (err) {
+        alert('Error signing JWT: ' + err.message);
+      }
+    }
+
+    function copyJWT() {
+      const jwtText = document.getElementById('newJWTOutput').textContent;
+      navigator.clipboard.writeText(jwtText)
+        .then(() => alert('✅ JWT copied to clipboard!'))
+        .catch(err => alert('Failed to copy: ' + err));
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    }
+  </script>
+</body>
+</html>
